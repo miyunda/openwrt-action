@@ -64,9 +64,9 @@ jobs:
 
     - name: Customize (1/2) 
       run: |
-        chmod +x $custom1
+        chmod +x $CUSTOM1
         cd openwrt
-        $GITHUB_WORKSPACE/$custom1
+        $GITHUB_WORKSPACE/$CUSTOM1
 
     - name: Update feeds
       run: cd openwrt && ./scripts/feeds update -a
@@ -78,9 +78,9 @@ jobs:
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $custom2
+        chmod +x $CUSTOM2
         cd openwrt
-        $GITHUB_WORKSPACE/$custom2
+        $GITHUB_WORKSPACE/$CUSTOM2
         
     - name: Download packages
       id: packages
