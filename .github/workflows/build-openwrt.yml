@@ -1,0 +1,150 @@
+name: Build an OpenWrt
+on:
+  workflow_dispatch:
+    inputs:
+        retention_days:
+          description: 'Keep this many days for Actions. only digits (0-9) are allowed'
+          required: false
+          default: '30'
+        retention_versions:
+          description: 'How many releases will be kept, only digits (0-9) are allowed'
+          required: false
+          default: '3'
+  
+env:
+  OPENWRT_REPO_URL: https://github.com/openwrt/openwrt.git
+  OPENWRT_REPO_BRANCH: openwrt-22.03
+  RUNNER_TZ: Asia/Shanghai
+  CUSTOM1: custom1.sh
+  CUSTOM2: custom2.sh
+  CONFIG_FILE: .config
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Initialization environment
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update -y
+        sudo -E apt-get -qq full-upgrade -y
+        sudo -E apt-get -qq install -y binutils bzip2 diff find flex gawk gcc-6+ getopt grep install libc-dev libz-dev make4.1+ perl python3.7+ rsync subversion unzip which
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$RUNNER_TZ"
+        sudo mkdir /build
+        sudo chown $USER:$GROUPS /build
+        
+    - name: Introduce reterntion policies for old releases
+      run: |
+         if [[ -z "${{ github.event.inputs.retention_days }}" ]] && [[ -z "${{ github.event.inputs.retention_versions }}" ]]; then
+           echo "retain_days=30" >> $GITHUB_ENV
+           echo "keep_latest=3" >> $GITHUB_ENV
+         else
+           echo "retain_days=${{ github.event.inputs.retention_days }}" >> $GITHUB_ENV
+           echo "keep_latest=${{ github.event.inputs.retention_versions }}" >> $GITHUB_ENV
+         fi
+
+    - name: Clone OpenWrt source code
+      working-directory: /build
+      run: |
+        df -hT $PWD
+        git clone $OPENWRT_REPO_URL -b $OPENWRT_REPO_BRANCH openwrt
+        ln -sf /build/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: Customize (1/2) 
+      run: |
+        chmod +x $custom1
+        cd openwrt
+        $GITHUB_WORKSPACE/$custom1
+
+    - name: Update feeds
+      run: cd openwrt && ./scripts/feeds update -a
+  
+    - name: Install feeds
+      run: cd openwrt && ./scripts/feeds install -a
+  
+    - name: Customize (2/2)
+      run: |
+        [ -e files ] && mv files openwrt/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        chmod +x $custom2
+        cd openwrt
+        $GITHUB_WORKSPACE/$custom2
+        
+    - name: Download packages
+      id: packages
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+  
+    - name: Compile the firmware
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "::set-output name=status::success"
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Check space usage
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Collect binary files
+      id: collect
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "::set-output name=status::success"
+
+    - name: Populate release tag
+      id: tag
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
+        echo "::set-output name=status::success"
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v1
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
+
+    - name: Clean up Actions
+      if: env.REPO_TOKEN
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        token: ${{ secrets.REPO_TOKEN }}
+        repository: ${{ github.repository }}
+        keep_minimum_runs: 0
+        retain_days: ${{ env.retain_days }}
+
+    - name: Remove old Releases
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled() && env.REPO_TOKEN
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        repo: ${{ github.repository }}
+        keep_latest: ${{ env.keep_latest }}
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}

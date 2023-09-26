@@ -1,2 +1,2 @@
-# openwrt-action
-Use Github Action to compile OpenWrt from Official repo 
+# openwrt-actions
+Use Actions to build OpenWrt from Official repo
