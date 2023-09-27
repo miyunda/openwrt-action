@@ -60,8 +60,7 @@ jobs:
       working-directory: /build
       run: |
         df -hT $PWD
-        git clone $OPENWRT_REPO_URL -b $OPENWRT_REPO_BRANCH openwrt
-        git checkout $OPENWRT_REPO_TAG --force
+        git clone --depth 1 --branch $OPENWRT_REPO_TAG $OPENWRT_REPO_BRANCH $OPENWRT_REPO_URL openwrt
         ln -sf /build/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Customize (1/2) 
