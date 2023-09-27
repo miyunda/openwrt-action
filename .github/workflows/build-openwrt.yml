@@ -13,7 +13,7 @@ on:
   
 env:
   OPENWRT_REPO_URL: https://github.com/openwrt/openwrt.git
-  OPENWRT_REPO_BRANCH: openwrt-22.03
+  # OPENWRT_REPO_BRANCH: openwrt-22.03
   OPENWRT_REPO_TAG: v22.03.5
   RUNNER_TZ: Asia/Shanghai
   CUSTOM1: custom1.sh
@@ -60,7 +60,7 @@ jobs:
       working-directory: /build
       run: |
         df -hT $PWD
-        git clone --depth 1 --branch $OPENWRT_REPO_TAG $OPENWRT_REPO_BRANCH $OPENWRT_REPO_URL openwrt
+        git clone --depth 1 --branch $OPENWRT_REPO_TAG $OPENWRT_REPO_URL openwrt
         ln -sf /build/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Customize (1/2) 
