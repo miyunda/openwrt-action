@@ -76,9 +76,8 @@ jobs:
       run: | 
         cd openwrt 
         ./scripts/feeds install -a
-        rm -rf tmp/
-        ./scripts/feeds install -a
-        
+        ./scripts/feeds install libpam libnetsnmp liblzma
+
     - name: Customize (2/2)
       run: |
         [ -e files ] && mv files openwrt/files
