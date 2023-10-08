@@ -22,3 +22,6 @@ sed -i 's/2.openwrt.pool.ntp.org/ntp.tencent.com/' $c_g
 
 # Modify default IP, eg 192.168.100.1
 #sed -i 's/192.168.1.1/192.168.100.1/g' $c_g
+
+# 臭不要脸
+sed -i "s/%D %V %C/%D %V %C built by $BUILDER on $( date '+%F' )/" package/base-files/files/etc/openwrt_release

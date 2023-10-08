@@ -93,6 +93,8 @@ jobs:
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         cd openwrt
         ./$CUSTOM2
+      env:
+        BUILDER: ${{ github.event.sender.id }}
         
     - name: Download packages
       id: packages
