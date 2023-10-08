@@ -94,7 +94,7 @@ jobs:
         cd openwrt
         ./$CUSTOM2
       env:
-        BUILDER: ${{ github.event.sender.id }}
+        BUILDER: ${{ github.repository_owner }}
         
     - name: Download packages
       id: packages
