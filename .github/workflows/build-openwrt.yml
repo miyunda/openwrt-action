@@ -14,7 +14,7 @@ on:
 env:
   OPENWRT_REPO_URL: https://github.com/openwrt/openwrt.git
   # OPENWRT_REPO_BRANCH: openwrt-22.03
-  OPENWRT_REPO_TAG: v22.03.5
+  OPENWRT_REPO_TAG: v23.05.0
   RUNNER_TZ: Asia/Shanghai
   CUSTOM1: custom1.sh
   CUSTOM2: custom2.sh
